@@ -72,6 +72,7 @@ pipeline {
         }
     }
 }
+}
 
 def sendGoogleChatNotification(String message) {
     node('built-in') {
