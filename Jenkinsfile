@@ -20,93 +20,16 @@ pipeline {
                     credentialsId: ''
             }
         }
-        stage('Login to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'docker-hub-credentials',
-                        passwordVariable: 'DOCKER_PASSWORD',
-                        usernameVariable: 'DOCKER_USERNAME'
-                    )]) {
-                        bat """
-                            docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'docker-hub-credentials',
-                        passwordVariable: 'DOCKER_PASSWORD',
-                        usernameVariable: 'DOCKER_USERNAME'
-                    )]) {
-                        bat """
-                            docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
-                            docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% .
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    bat """
-                        docker push %DOCKER_IMAGE%:%DOCKER_TAG%
-                        docker push %DOCKER_IMAGE%:latest
-                    """
-                }
-            }
-        }
-
+        
         stage('Deploy') {
             steps {
-                script {
-                    sh """
-                        # Find container using port ${HOST_PORT}
-                        CONTAINER_USING_PORT=\$(docker ps --format '{{.Names}}' --filter "publish=${HOST_PORT}" | head -n 1)
-                        
-                        # Stop and remove if found
-                        if [ -n "\$CONTAINER_USING_PORT" ]; then
-                            echo "Found container \$CONTAINER_USING_PORT using port ${HOST_PORT}, stopping it..."
-                            docker stop \$CONTAINER_USING_PORT || true
-                            docker rm \$CONTAINER_USING_PORT || true
-                        fi
-                        
-                        # Remove our named container if it exists
-                        if docker container inspect ${CONTAINER_NAME} >/dev/null 2>&1; then
-                            docker stop ${CONTAINER_NAME} || true
-                            docker rm ${CONTAINER_NAME} || true
-                        fi
-                        
-                        # Run new container
-                        docker run -d \
-                            --name ${CONTAINER_NAME} \
-                            -p ${HOST_PORT}:80 \
-                            ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """
-                }
-            }
+                echo "deployed"
         }
     }
 
     post {
         always {
-            node('built-in') {
-                script {
-                    bat """
-                        docker logout || exit 0
-                        docker ps -a --filter "name=%CONTAINER_NAME%" --format "{{.ID}}" > temp.txt
-                        for /f %%i in (temp.txt) do docker rm -f %%i || exit 0
-                        del temp.txt || exit 0
-                    """
-                }
-            }
+            echo "post "
         }
     
         success {
